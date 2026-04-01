@@ -1,0 +1,23 @@
+[project]
+name = "college-financial-health"
+version = "0.1.0"
+description = "Paper replication: College Financial Health"
+requires-python = ">=3.11"
+dependencies = [
+    "jupyter==1.1.1",
+    "numpy==2.4.4",
+    "pandas==3.0.2",
+    "matplotlib==3.10.8",
+    "seaborn==0.13.2",
+    "scipy==1.17.1",
+    "statsmodels==0.14.6",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.uv]
+dev-dependencies = [
+    "ruff==0.15.8",
+    "pytest==9.0.2",
+]
