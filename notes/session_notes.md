@@ -47,7 +47,7 @@
 
 ## Still Outstanding
 
-- **FRC composite scores** — manual download only; studentaid.gov blocks automated requests. Download year-by-year Excel files (2006–2020) from `studentaid.gov/data-center/school/composite-scores`, save as `data/raw/frc/frc_{year}.xlsx`
+- ~~**FRC composite scores**~~ — **Done** (2026-04-10). 16 files (frc_2006.xls through frc_2021.xls) manually downloaded and saved to `manual_data/frc/raw/`
 - **IPEDS full run** — only 2022 was tested; run `make download-ipeds` for all years 2002–2023
 - **BLS full run** — run `make download-bls` for all ~3,200 counties (~15 min)
 - **College Scorecard historical data** — API returns latest snapshot only; full year-by-year data requires manual zip download from `collegescorecard.ed.gov/data/`
