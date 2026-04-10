@@ -123,8 +123,9 @@ Institution-level fields including sector, predominant degree level, HCM2 status
 | **Status** | Automated (with fallback) |
 | **Make command** | `make download-frc` |
 | **Script** | `scripts/download_frc.py` |
-| **Output** | `data/raw/frc/frc_{year}.xlsx` |
-| **Years** | 2006–2020 |
+| **Output** | `manual_data/frc/raw/frc_{year}.xls` |
+| **Years** | 2006–2021 |
+| **Downloaded** | 2026-04-10 |
 | **API key needed** | No |
 
 **What it downloads:**
@@ -138,8 +139,8 @@ Financial Responsibility Composite (FRC) scores for private nonprofit and for-pr
 **Manual fallback:**
 1. Go to https://studentaid.gov/data-center/school/composite-scores
    OR: https://catalog.data.gov/dataset/composite-scores-for-private-non-profit-and-proprietary-institutions
-2. Download the Excel file for each year (2006–2020)
-3. Save as `data/raw/frc/frc_{year}.xlsx` (e.g., `frc_2015.xlsx`)
+2. Download the Excel file for each year (2006–2021)
+3. Save as `manual_data/frc/raw/frc_{year}.xls` (e.g., `frc_2015.xls`)
 
 ---
 

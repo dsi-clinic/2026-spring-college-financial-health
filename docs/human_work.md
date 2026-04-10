@@ -15,7 +15,7 @@ Run `make download-all` to kick off everything that is automated.
 | **College Scorecard** (HCM, sector) | Needs API key | 5 min: sign up at [api.data.gov/signup](https://api.data.gov/signup/), add `SCORECARD_API_KEY=...` to `.env` |
 | **BEA** (county income/population) | Needs API key | 5 min: sign up at [apps.bea.gov/api/signup](https://apps.bea.gov/api/signup/), add `BEA_API_KEY=...` to `.env` |
 | **PEPS** (closed schools) | Fully automated | Nothing — `make download-peps` now works via legacy ed.gov URL (19,758 closures back to 1984) |
-| **FRC** (composite scores) | Manual required | Download year-by-year Excel files (2006–2020) from [studentaid.gov/data-center/school/composite-scores](https://studentaid.gov/data-center/school/composite-scores), save as `data/raw/frc/frc_{year}.xlsx` |
+| **FRC** (composite scores) | Done (manual) | Downloaded 2026-04-10 from [studentaid.gov/data-center/school/composite-scores](https://studentaid.gov/data-center/school/composite-scores). 16 files (AY 2006-07 through 2021-22) saved as `manual_data/frc/raw/frc_{year}.xls` (year = start of AY) |
 
 ---
 
@@ -35,11 +35,7 @@ Run `make download-all` to kick off everything that is automated.
 
 ### Manual Downloads (no script can do this)
 
-3. **FRC composite scores**
-   - Go to [studentaid.gov/data-center/school/composite-scores](https://studentaid.gov/data-center/school/composite-scores)
-   - Download one Excel file per year for 2006–2020
-   - Save each as `data/raw/frc/frc_{year}.xlsx` (e.g. `frc_2015.xlsx`)
-   - Note: FRC covers private institutions only (~37% of never-closed institutions have this data)
+3. ~~**FRC composite scores**~~ — **Done** (2026-04-10). 16 files saved to `manual_data/frc/raw/`.
 
 ---
 
@@ -47,7 +43,7 @@ Run `make download-all` to kick off everything that is automated.
 
 - **4 sources**: zero work, run immediately (`make download-all` handles them)
 - **2 sources**: done — API keys obtained and downloads completed
-- **1 source**: manual download from studentaid.gov required (FRC composite scores only)
+- **1 source**: done — FRC composite scores manually downloaded 2026-04-10
 - **1 file**: manual download from NCES required (IPEDS 1996 header, needed for Table 4)
 
 ---
@@ -56,11 +52,7 @@ Run `make download-all` to kick off everything that is automated.
 
 ### Manual Downloads
 
-1. **FRC composite scores**
-   - Go to [studentaid.gov/data-center/school/composite-scores](https://studentaid.gov/data-center/school/composite-scores)
-   - Download one Excel file per year for 2006–2020
-   - Save each as `data/raw/frc/frc_{year}.xlsx` (e.g. `frc_2015.xlsx`)
-   - Note: FRC covers private institutions only (~37% of never-closed institutions have this data)
+1. ~~**FRC composite scores**~~ — **Done** (2026-04-10). 16 files (frc_2006.xls through frc_2021.xls) saved to `manual_data/frc/raw/`.
 
 2. **IPEDS 1996 institutional directory** (needed for Table 4)
    - Go to [nces.ed.gov/ipeds/datacenter/DataFiles.aspx](https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx)
