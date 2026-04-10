@@ -69,19 +69,72 @@ TABLE4_SECTORS = list(SECTOR_LABELS.keys())
 
 
 def normalize_opeid(series: pd.Series) -> pd.Series:
-    """Strip whitespace and zero-pad to 8 characters for consistent matching."""
-    return series.astype(str).str.strip().str.zfill(8)
+    """Strip whitespace and zero-pad to 8 characters for consistent matching.
+
+    Handles float representation (e.g. 2601100.0 from numeric CSV columns)
+    by stripping trailing '.0' before zero-padding.
+    """
+    return (
+        series.astype(str)
+        .str.strip()
+        .str.replace(r"\.0$", "", regex=True)
+        .str.zfill(8)
+    )
 
 
 def load_hd(year: int) -> pd.DataFrame:
-    """Load IPEDS HD file for a given year. Returns DataFrame with unitid, opeid, sector."""
-    path = IPEDS_DIR / f"hd_{year}.csv"
-    if not path.exists():
-        raise FileNotFoundError(f"Missing: {path}")
-    df = pd.read_csv(path, encoding="latin1", low_memory=False)
-    df.columns = df.columns.str.lower()
-    df["opeid"] = normalize_opeid(df["opeid"])
-    df["sector"] = pd.to_numeric(df["sector"], errors="coerce")
+    """Load IPEDS HD file for a given year. Returns DataFrame with unitid, opeid, sector.
+
+    For 1996, checks for ic9697_a.csv (IPEDS 1996-97 IC Directory, covers fall 1996)
+    and ic9596_a.csv (1995-96), in addition to the standard hd_1996.csv name.
+    ic9697_a.csv is preferred — "open in 1996" means fall 1996 = 1996-97 survey year.
+
+    NOTE on 1996 sector encoding: the ic9596_a.csv file uses a different sector
+    numbering scheme than modern HD files (ordered by level-first rather than control-first).
+    We rebuild sector from `control` + `iclevel` to produce modern HD-compatible codes.
+    The paper also groups less-than-2-year (iclevel=3) schools into the 2-year category,
+    so iclevel=3 is mapped to the 2-year sector (e.g. for-profit <2yr → sector 8).
+    """
+    if year == 1996:
+        candidates = [
+            IPEDS_DIR / "hd_1996.csv",
+            IPEDS_DIR / "ic9697_a.csv",
+            IPEDS_DIR / "ic9596_a.csv",
+        ]
+        path = next((p for p in candidates if p.exists()), None)
+        if path is None:
+            raise FileNotFoundError(
+                f"Missing 1996 IPEDS file. Expected one of: {[str(p) for p in candidates]}"
+            )
+        df = pd.read_csv(path, encoding="latin1", low_memory=False)
+        df.columns = df.columns.str.lower()
+        df["opeid"] = normalize_opeid(df["opeid"])
+        df["control"] = pd.to_numeric(df["control"], errors="coerce")
+        df["iclevel"] = pd.to_numeric(df["iclevel"], errors="coerce")
+        # Remap iclevel=3 (less-than-2-year) to iclevel=2 (treat as 2-year, matching paper)
+        iclevel_mapped = df["iclevel"].replace(3, 2)
+        # Build modern sector code: control + iclevel → sector 1-9
+        # (1,1)→1, (1,2)→2, (2,1)→4, (2,2)→5, (3,1)→7, (3,2)→8
+        ctrl_icl_map = {
+            (1, 1): 1, (1, 2): 2,
+            (2, 1): 4, (2, 2): 5,
+            (3, 1): 7, (3, 2): 8,
+        }
+        df["sector"] = [
+            ctrl_icl_map.get((int(c), int(i)), 99)
+            if pd.notna(c) and pd.notna(i) else 99
+            for c, i in zip(df["control"], iclevel_mapped)
+        ]
+        # Main campus filter: OPEID ending in "00"
+        df = df[df["opeid"].str.endswith("00")].copy()
+    else:
+        path = IPEDS_DIR / f"hd_{year}.csv"
+        if not path.exists():
+            raise FileNotFoundError(f"Missing: {path}")
+        df = pd.read_csv(path, encoding="latin1", low_memory=False)
+        df.columns = df.columns.str.lower()
+        df["opeid"] = normalize_opeid(df["opeid"])
+        df["sector"] = pd.to_numeric(df["sector"], errors="coerce")
     return df[["unitid", "opeid", "instnm", "stabbr", "sector"]].copy()
 
 
@@ -172,9 +225,12 @@ def main():
     peps = load_peps()
     print(f"  {len(peps):,} main-campus closures loaded (1996+ filter applied below)")
 
-    # --- Approach 1: Use HD1996 if manually downloaded ---
-    hd1996_path = IPEDS_DIR / "hd_1996.csv"
-    if hd1996_path.exists():
+    # --- Approach 1: Use HD1996 / ic9596_a.csv if present ---
+    hd1996_path = next(
+        (p for p in [IPEDS_DIR / "hd_1996.csv", IPEDS_DIR / "ic9697_a.csv", IPEDS_DIR / "ic9596_a.csv"] if p.exists()),
+        None,
+    )
+    if hd1996_path is not None:
         print("\nUsing HD1996 (exact 1996 universe)...")
         universe_1996 = load_hd(1996)
         universe_1996 = universe_1996[universe_1996["sector"].isin(TABLE4_SECTORS)]

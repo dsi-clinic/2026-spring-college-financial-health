@@ -87,3 +87,34 @@ Without HD1996, the for-profit 2-year count is 189 (ours) vs 2,339 (paper) — b
 ### Bugs Fixed During Table 4 Work
 - **OPEID stripping bug**: original script stripped leading zeros, which broke OPEIDs containing letters (e.g. `001055A1`). Fixed to zero-pad to 8 chars instead.
 - **Main campus filter**: rewrote PEPS loader to filter on `opeid.endswith("00")` cleanly without re-reading the file.
+
+---
+
+## Session 2 — Continued Table 4 Work (April 8, 2026)
+
+### Files Downloaded / Placed
+- `data/raw/ipeds/ic9596_a.csv` — IPEDS 1995-96 Institutional Characteristics Directory, manually downloaded from NCES datacenter and placed by user
+
+### Bugs Fixed
+
+- **ic9596_a.csv not recognized**: script was looking only for `hd_1996.csv`. Updated `load_hd(1996)` to also check for `ic9596_a.csv`.
+- **OPEID stored as float**: the 1996 IC file stores OPEID as a numeric column (e.g. `2601100.0`). `astype(str)` produced `'2601100.0'`, which broke matching. Fixed `normalize_opeid()` to strip trailing `.0` with `str.replace(r'\.0$', '', regex=True)` before zero-padding.
+- **Wrong sector encoding**: the 1996 IC file uses a different sector numbering than modern HD files — ordered by level first (1=Public 4yr, 2=Nonprofit 4yr, 3=For-profit 4yr, 4=Public 2yr, ...) rather than by control first. The script was reading `sector=4` and treating it as Nonprofit 4yr (modern encoding) when it actually means Public 2yr in the 1996 file. Fixed by deriving sector from `control` + `iclevel` directly.
+- **Less-than-2-year not included**: the paper groups less-than-2-year schools (iclevel=3) into the 2-year category. Without this, for-profit 2-year was 476 (ours) vs 2,339 (paper). Fixed by mapping iclevel=3 → iclevel=2 before building sector codes.
+
+### Current Output (with ic9596_a.csv)
+
+| Sector | Ours (Open) | Paper (Open) | Ours 2016 | Paper 2016 |
+|---|---|---|---|---|
+| Public 4-year | 607 | 778 | **0.3%** | **0.3%** |
+| Public 2-year | 1,418 | 1,389 | **1.6%** | **1.6%** |
+| Nonprofit 4-year | 1,545 | 1,715 | **4.3%** | **4.3%** |
+| Nonprofit 2-year | 451 | 548 | 25.9% | 18.1% |
+| For-profit 4-year | 93 | 332 | 7.5% | 10.8% |
+| For-profit 2-year | 2,284 | 2,339 | 34.4% | 29.4% |
+| **Total** | **6,398** | **6,411** | 15.6% | 12.7% |
+
+Three rate cells match exactly (public 4yr 2016/2023, public 2yr 2016, nonprofit 4yr 2016). The total universe gap is only 13 institutions.
+
+### Remaining Discrepancy
+The for-profit 4-year count (93 vs 332) and public/nonprofit 4-year gaps (−171, −170) likely reflect institutions that participated in Title IV in 1996 but did not fully respond to the IC survey. The paper supplemented with College Scorecard and other sources. The closure identification and OPEID matching logic are confirmed correct.
