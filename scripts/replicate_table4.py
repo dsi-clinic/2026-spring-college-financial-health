@@ -54,6 +54,7 @@ import pandas as pd
 # --- Paths ---
 IPEDS_DIR = Path("data/raw/ipeds")
 PEPS_FILE = Path("data/raw/peps/closedschoolsearch.xls")
+OUTPUT_DIR = Path("analysis/replicated_tables")
 
 # --- Sector mapping ---
 SECTOR_LABELS = {
@@ -157,6 +158,12 @@ def compute_table4(universe: pd.DataFrame, peps: pd.DataFrame, label: str) -> pd
     print(f"Table 4 Replication — {label}")
     print(f"{'='*70}")
     print(df.to_string(index=False))
+
+    # Save to analysis/replicated_tables/
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_path = OUTPUT_DIR / "replicated_table4.csv"
+    df.to_csv(out_path, index=False)
+    print(f"\nSaved to {out_path}")
     return df
 
 
@@ -172,7 +179,7 @@ def main():
         universe_1996 = load_hd(1996)
         universe_1996 = universe_1996[universe_1996["sector"].isin(TABLE4_SECTORS)]
         peps_from_1996 = peps[peps["closed_date"].dt.year >= 1996]
-        result = compute_table4(universe_1996, peps_from_1996, "Exact 1996 universe (HD1996)")
+        compute_table4(universe_1996, peps_from_1996, "Exact 1996 universe (HD1996)")
     else:
         print("\nHD1996 not found — using HD2002 + PEPS 1996-2001 as approximate 1996 universe.")
         print("To use the exact 1996 universe:")
@@ -180,17 +187,17 @@ def main():
         print("  2. Select year 1995-96, Institutional Characteristics survey")
         print("  3. Download and save as data/raw/ipeds/hd_1996.csv")
 
-    # --- Approach 2: Approximate 1996 universe from HD2002 ---
-    print("\nBuilding approximate 1996 universe from HD2002 + PEPS 1996-2001 closures...")
-    universe_approx = build_1996_universe(peps)
-    universe_approx_filtered = universe_approx[universe_approx["sector"].isin(TABLE4_SECTORS)]
-    peps_from_1996 = peps[peps["closed_date"].dt.year >= 1996]
+        # --- Approach 2: Approximate 1996 universe from HD2002 ---
+        print("\nBuilding approximate 1996 universe from HD2002 + PEPS 1996-2001 closures...")
+        universe_approx = build_1996_universe(peps)
+        universe_approx_filtered = universe_approx[universe_approx["sector"].isin(TABLE4_SECTORS)]
+        peps_from_1996 = peps[peps["closed_date"].dt.year >= 1996]
 
-    n_unknown = (universe_approx["sector"] == -1).sum()
-    if n_unknown > 0:
-        print(f"  Note: {n_unknown} pre-2002 closures have unknown sector and are excluded from sector rows.")
+        n_unknown = (universe_approx["sector"] == -1).sum()
+        if n_unknown > 0:
+            print(f"  Note: {n_unknown} pre-2002 closures have unknown sector and are excluded from sector rows.")
 
-    compute_table4(universe_approx_filtered, peps_from_1996, "Approximate 1996 universe (HD2002 + PEPS 1996-2001)")
+        compute_table4(universe_approx_filtered, peps_from_1996, "Approximate 1996 universe (HD2002 + PEPS 1996-2001)")
 
     print("\n\nPaper targets (Table 4):")
     paper = pd.DataFrame([
