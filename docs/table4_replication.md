@@ -45,14 +45,14 @@ Source: Kelchen, Ritter & Webber (2025), FEDS 2025-003
 
 | Sector | Ours 2006 | Paper 2006 | Ours 2016 | Paper 2016 | Ours 2023 | Paper 2023 |
 |---|---|---|---|---|---|---|
-| Public 4-year | 0.2% | 0.3% | **0.3%** | **0.3%** | **0.3%** | **0.3%** |
-| Public 2-year | 1.3% | 1.1% | **1.6%** | **1.6%** | 1.8% | 1.9% |
-| Nonprofit 4-year | 1.9% | 1.7% | **4.3%** | **4.3%** | 7.8% | 7.3% |
+| Public 4-year | 0.2% | 0.3% | <span style="color: green">**0.3%**</span> | <span style="color: green">**0.3%**</span> | <span style="color: green">**0.3%**</span> | <span style="color: green">**0.3%**</span> |
+| Public 2-year | 1.3% | 1.1% | <span style="color: green">**1.6%**</span> | <span style="color: green">**1.6%**</span> | 1.8% | 1.9% |
+| Nonprofit 4-year | 1.9% | 1.7% | <span style="color: green">**4.3%**</span> | <span style="color: green">**4.3%**</span> | 7.8% | 7.3% |
 | Nonprofit 2-year | 16.4% | 10.9% | 25.9% | 18.1% | 29.7% | 21.2% |
 | For-profit 4-year | 3.2% | 1.8% | 7.5% | 10.8% | 21.5% | 24.1% |
 | For-profit 2-year | 21.6% | 17.5% | 34.4% | 29.4% | 45.2% | 38.3% |
 
-Three cells match exactly (bold): Public 4-year 2016/2023, Public 2-year 2016, Nonprofit 4-year 2016.
+Three cells match exactly (green): Public 4-year 2016/2023, Public 2-year 2016, Nonprofit 4-year 2016.
 
 ---
 
