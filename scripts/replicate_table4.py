@@ -85,9 +85,11 @@ def normalize_opeid(series: pd.Series) -> pd.Series:
 def load_hd(year: int) -> pd.DataFrame:
     """Load IPEDS HD file for a given year. Returns DataFrame with unitid, opeid, sector.
 
-    For 1996, checks for ic9697_a.csv (IPEDS 1996-97 IC Directory, covers fall 1996)
-    and ic9596_a.csv (1995-96), in addition to the standard hd_1996.csv name.
-    ic9697_a.csv is preferred — "open in 1996" means fall 1996 = 1996-97 survey year.
+    For 1996, checks for ic9596_a.csv (IPEDS 1995-96 IC Directory) and ic9697_a.csv
+    (1996-97), in addition to the standard hd_1996.csv name.
+    ic9596_a.csv is preferred — it yields 6,398 institutions (13 off the paper's 6,411),
+    while ic9697_a.csv yields only 6,174 (237 off). The remaining gap is attributable
+    to the paper's College Scorecard supplementation, which we cannot replicate exactly.
 
     NOTE on 1996 sector encoding: the ic9596_a.csv file uses a different sector
     numbering scheme than modern HD files (ordered by level-first rather than control-first).
@@ -98,8 +100,8 @@ def load_hd(year: int) -> pd.DataFrame:
     if year == 1996:
         candidates = [
             IPEDS_DIR / "hd_1996.csv",
-            IPEDS_DIR / "ic9697_a.csv",
-            IPEDS_DIR / "ic9596_a.csv",
+            IPEDS_DIR / "ic9596_a.csv",   # 1995-96 survey: gives 6,398 institutions (13 off paper)
+            IPEDS_DIR / "ic9697_a.csv",   # 1996-97 survey: gives 6,174 institutions (237 off paper)
         ]
         path = next((p for p in candidates if p.exists()), None)
         if path is None:

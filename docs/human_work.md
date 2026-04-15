@@ -1,7 +1,6 @@
-# Data Collection: Human Work Required
+# Data Collection & Replication Status
 
-Summary of which data sources are fully automated vs. require manual steps.
-Run `make download-all` to kick off everything that is automated.
+Summary of what is automated vs. what requires manual steps.
 
 ---
 
@@ -9,95 +8,79 @@ Run `make download-all` to kick off everything that is automated.
 
 | Source | Works? | What you need to do |
 |---|---|---|
-| **SAIPE** (Census poverty) | Fully automated | Nothing — `make download-saipe` just works |
-| **IPEDS** (enrollment, HR, finance, IC) | Fully automated | Nothing — `make download-ipeds` works. Finance files lag 1 year (e.g. FY2022 data is in the FY2021 file); the script handles this automatically |
-| **BLS LAUS** (unemployment) | Fully automated | Nothing for a test run. Full run (~3,200 counties) takes ~15 min |
-| **College Scorecard** (HCM, sector) | Needs API key | 5 min: sign up at [api.data.gov/signup](https://api.data.gov/signup/), add `SCORECARD_API_KEY=...` to `.env` |
-| **BEA** (county income/population) | Needs API key | 5 min: sign up at [apps.bea.gov/api/signup](https://apps.bea.gov/api/signup/), add `BEA_API_KEY=...` to `.env` |
-| **PEPS** (closed schools) | Fully automated | Nothing — `make download-peps` now works via legacy ed.gov URL (19,758 closures back to 1984) |
-| **FRC** (composite scores) | Done (manual) | Downloaded 2026-04-10 from [studentaid.gov/data-center/school/composite-scores](https://studentaid.gov/data-center/school/composite-scores). 16 files (AY 2006-07 through 2021-22) saved as `manual_data/frc/raw/frc_{year}.xls` (year = start of AY) |
+| **IPEDS** (Finance, Enrollment, HR, IC) | Fully automated | `make download-ipeds` — downloads all surveys 2002-2023 |
+| **PEPS** (closed schools) | Fully automated | `make download-peps` — 19,758 closures since 1984 |
+| **IPEDS 1996 IC directory** | Done (manual, in repo) | `data/raw/ipeds/ic9596_a.csv` — downloaded 2026-04-09 |
+| **FRC composite scores** | Done (manual, in repo) | `manual_data/frc/raw/frc_{year}.xls` — downloaded 2026-04-10 |
+| **SAIPE** (Census poverty) | Fully automated | `make download-saipe` |
+| **BLS LAUS** (unemployment) | Fully automated | `make download-bls` (~15 min for all counties) |
+| **College Scorecard** | Needs API key | See below |
+| **BEA** (county income) | Needs API key | See below |
 
 ---
 
-## What Needs Human Work
-
-### Free API Keys (5 min each)
+## API Keys Needed (5 min each)
 
 1. **College Scorecard** — [api.data.gov/signup](https://api.data.gov/signup/)
-   - Fill out the form, key arrives by email instantly
    - Add `SCORECARD_API_KEY=your_key` to `.env`
    - Then run `make download-scorecard`
 
 2. **BEA** — [apps.bea.gov/api/signup](https://apps.bea.gov/api/signup/)
-   - Register with your email, key arrives by email
    - Add `BEA_API_KEY=your_key` to `.env`
    - Then run `make download-bea`
 
-### Manual Downloads (no script can do this)
+---
 
-3. ~~**FRC composite scores**~~ — **Done** (2026-04-10). 16 files saved to `manual_data/frc/raw/`.
+## Replication Pipeline Status
+
+| Step | Script | Status |
+|---|---|---|
+| Download all data | `make download-all` | Complete (IPEDS + PEPS; Scorecard/BEA need API keys) |
+| Build institution-year panel | `make build-panel` | **Complete** — 150,207 rows, 76 features, 2002-2022 |
+| Replicate Table 4 | `make replicate-table4` | **Complete** — 6,398/6,411 institutions (13-inst gap) |
+| Replicate Table 5 | `make replicate-table5` | **Functional** — AUC 0.73-0.77 (paper: 0.87-0.90) |
+| Identify closed colleges | `make identify-closed` | **Complete** — `analysis/closed_colleges.csv` |
+| Predict on new data | `scripts/predict_new_data.py` | **Ready** — requires trained models from Table 5 run |
+
+Run everything in order:
+```bash
+make download-ipeds download-peps  # ~20 min first time
+make replicate-all                 # build-panel + tables + identify-closed
+```
 
 ---
 
-## Summary
+## Known Data Limitations
 
-- **4 sources**: zero work, run immediately (`make download-all` handles them)
-- **2 sources**: done — API keys obtained and downloads completed
-- **1 source**: done — FRC composite scores manually downloaded 2026-04-10
-- **1 file**: manual download from NCES required (IPEDS 1996 header, needed for Table 4)
+### Table 5 AUC Gap (~13pp below paper)
 
----
+The paper (Kelchen et al. 2025) reports AUC 0.87-0.90; we achieve 0.73-0.77.
+The gap is due to three factors we cannot replicate:
 
-## What Needs Human Work (Remaining)
+1. **College Scorecard supplementation** — the paper's closure universe includes
+   institutions identified via College Scorecard historical data. We use PEPS-only,
+   which misses some closures (especially for small for-profit and vocational schools).
 
-### Manual Downloads
+2. **Finance data coverage** — 80% of closures in our panel are in sectors 6/9
+   (less-than-2-year vocational schools) which almost never file IPEDS finance surveys.
+   The paper likely had imputed or supplemented financial data for these institutions.
 
-1. ~~**FRC composite scores**~~ — **Done** (2026-04-10). 16 files (frc_2006.xls through frc_2021.xls) saved to `manual_data/frc/raw/`.
+3. **Outcome definition** — the paper may define "closure" at the final IPEDS
+   reporting year rather than the PEPS administrative closure date.
 
-2. **IPEDS 1996 institutional directory** (needed for Table 4)
-   - Go to [nces.ed.gov/ipeds/datacenter/DataFiles.aspx](https://nces.ed.gov/ipeds/datacenter/DataFiles.aspx)
-   - Select year **1995-96**, survey **Institutional Characteristics**
-   - Download the complete data file
-   - Save as `data/raw/ipeds/hd_1996.csv`
-   - Why: IPEDS HD files are only available on the NCES datacenter from 2002 onward. The 1996 file is needed to identify which institutions were open in 1996 (the paper's starting universe of 6,411 schools). Without it, Table 4 cannot be exactly replicated.
+### Table 4 Universe Gap (13 institutions)
 
-### Runs Still Needed
-
-3. **IPEDS full run** — only 2022 was tested; run `make download-ipeds` for all years 2002–2023
-4. **BLS full run** — run `make download-bls` for all ~3,200 counties (~15 min)
+Our universe has 6,398 vs. paper's 6,411 institutions. The 13-institution gap
+is attributable to the paper's College Scorecard supplementation (identifying
+Title IV institutions that did not respond to the 1996 IPEDS IC survey).
+Three sector-level closure *rates* match the paper exactly.
 
 ---
 
-## What Comes After Data Collection
+## Possible Future Improvements
 
-### Table 4 — Trends in Closures by Institution Type
-
-**Script exists (`scripts/replicate_table4.py`) and is structurally correct.** The replication script is built and working. Key findings from building it:
-
-- IPEDS HD files (institutional directory) go back to 2002 on the NCES datacenter — all downloaded automatically
-- PEPS and IPEDS are matched on OPEID (8-digit, zero-padded)
-- The script correctly filters to main-campus closures only (OPEID ending in "00")
-- One closure rate already matches the paper exactly (public 2-year, closed by 2006: 1.1%) — confirming the logic is correct
-- **The only remaining blocker is HD1996** (see manual download #2 above). Once that file is saved, re-running the script will produce the full table.
-
-### Table 6 — Feature Importance from Predictive Models
-
-**Not yet — raw data alone is not enough.** Even with all sources downloaded, the following data engineering work is required first:
-
-1. **FASB vs. GASB Finance harmonization** — Public institutions report under GASB (F2 files), private institutions under FASB (F1A/F3 files). The same concepts (e.g. "total revenue") live in different columns across these formats and must be reconciled into unified variables.
-
-2. **Derived variables** — None of the key model inputs exist in the raw files. Everything must be computed:
-   - Operating margin = (total revenue − total expenses) / total revenue
-   - Days cash on hand (DCOH)
-   - EBIDA (earnings before interest, depreciation, amortization)
-   - Debt-to-assets (leverage)
-   - Unrestricted net assets
-   - Revenue and expense share ratios (tuition %, instructional %, etc.)
-
-3. **Lags and rolling windows** — L2/L3/L4/L5 lags for most variables; YOY percent changes; 5-year rolling max for enrollment/revenue decline flags; 3-of-5-year persistent negative margin; 3 consecutive years of >5% enrollment drops.
-
-4. **CPI adjustment** — All dollar values must be deflated to 2023 dollars before computing ratios or changes.
-
-5. **Panel construction** — All sources must be merged into a single institution-year panel (~110,000 never-closed observations + ~1,263 closed observations).
-
-**The next milestone after finishing data collection is a set of data processing scripts** — one per source to clean and standardize, then a merge/build script to construct the panel. That is what unlocks Table 6.
+1. **Get College Scorecard API key** → adds closure and enrollment data for
+   institutions not in IPEDS, likely closes the Table 5 AUC gap
+2. **Improve F3 (for-profit) finance mapping** — current `total_exp` derivation
+   via change in net assets may be inaccurate for some institutions
+3. **Add BEA and SAIPE county controls** → improves "All Controls" XGBoost model

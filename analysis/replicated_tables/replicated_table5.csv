@@ -1,0 +1,13 @@
+Model,Outcome,Sample,AUC,N_obs,N_closures
+A: OLS (Continuous),closed_in_year_lead1,2002–2021 (full),N/A,2556,0
+B: LASSO-OLS (Continuous),closed_in_year_lead1,2002–2021 (full),N/A,2556,0
+C: OLS (Binned),closed_in_year_lead1,2002–2021 (full),0.737,19495,179
+D: XGBoost (Binned),closed_in_year_lead1,2002–2021 (full),0.749,19495,179
+E: XGBoost (Continuous),closed_in_year_lead1,2002–2021 (full),0.739,19495,179
+F: XGBoost (All Controls),closed_in_year_lead1,2002–2021 (full),0.743,19495,179
+A: OLS (Continuous),closed_within_3yr_lead,2002–2021 (full),0.019,2469,3
+B: LASSO-OLS (Continuous),closed_within_3yr_lead,2002–2021 (full),0.019,2469,3
+C: OLS (Binned),closed_within_3yr_lead,2002–2021 (full),0.752,19570,622
+D: XGBoost (Binned),closed_within_3yr_lead,2002–2021 (full),0.762,19570,622
+E: XGBoost (Continuous),closed_within_3yr_lead,2002–2021 (full),0.761,19570,622
+F: XGBoost (All Controls),closed_within_3yr_lead,2002–2021 (full),0.772,19570,622

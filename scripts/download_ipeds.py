@@ -27,13 +27,16 @@ OUT_DIR = Path("data/raw/ipeds")
 
 # Each entry: (label, list_of_url_stem_templates_to_try_in_order)
 # {year} = 4-digit year; {prev} = year-1 (Finance lags by one year at NCES)
+# {yr2d} = last 2 digits of year (zero-padded); {next2d} = last 2 digits of year+1
+# Older finance files (2002-2020) use F{yr2d}{next2d}_* format (e.g. F0203_F1A).
+# Newer files (2021+) use F{year}_* format (e.g. F2021_F1A).
 # First matching URL wins.
 SURVEYS = {
-    # NCES Finance files: provisional release uses prior year in filename
-    # GASB (public) and FASB (private) files lag the survey year by 1
-    "finance_fasb_f1a": ["F{year}_F1A", "F{prev}_F1A", "F{year}_F1A_RV"],
-    "finance_fasb_f3":  ["F{year}_F3",  "F{prev}_F3",  "F{year}_F3_RV"],
-    "finance_gasb_f2":  ["F{year}_F2",  "F{prev}_F2",  "F{year}_F2_RV"],
+    # NCES Finance files: older years use 2-digit year-range format (F0203_F1A);
+    # newer years use 4-digit year (F2021_F1A). Try both in order.
+    "finance_fasb_f1a": ["F{year}_F1A", "F{yr2d}{next2d}_F1A", "F{prev}_F1A", "F{year}_F1A_RV"],
+    "finance_fasb_f3":  ["F{year}_F3",  "F{yr2d}{next2d}_F3",  "F{prev}_F3",  "F{year}_F3_RV"],
+    "finance_gasb_f2":  ["F{year}_F2",  "F{yr2d}{next2d}_F2",  "F{prev}_F2",  "F{year}_F2_RV"],
     # Fall enrollment: standard pattern works
     "fall_enrollment":  ["EF{year}A",   "EF{year}A_RV"],
     # 12-month enrollment: NCES uses E12_{year} for 2012+; older = EAP{year}
@@ -76,7 +79,9 @@ def download_survey(label: str, stems: list[str], year: int, dry_run: bool) -> b
         print(f"  [skip] {out_path.name} already exists")
         return True
 
-    resolved = [s.format(year=year, prev=year - 1) for s in stems]
+    yr2d = str((year - 1) % 100).zfill(2)
+    next2d = str(year % 100).zfill(2)
+    resolved = [s.format(year=year, prev=year - 1, yr2d=yr2d, next2d=next2d) for s in stems]
 
     if dry_run:
         print(f"  [dry-run] {label}_{year}: would try {resolved[0]}.zip (+ {len(resolved)-1} fallbacks)")
@@ -113,7 +118,9 @@ def main():
         for year in tqdm(years, desc=label, unit="yr", leave=False):
             ok = download_survey(label, stems, year, args.dry_run)
             if not ok:
-                failed.append((label, year, [s.format(year=year, prev=year - 1) for s in stems]))
+                yr2d = str((year - 1) % 100).zfill(2)
+                next2d = str(year % 100).zfill(2)
+                failed.append((label, year, [s.format(year=year, prev=year - 1, yr2d=yr2d, next2d=next2d) for s in stems]))
 
     print(f"\nDone. {total - len(failed)}/{total} files downloaded.")
 
