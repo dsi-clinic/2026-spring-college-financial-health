@@ -1,13 +1,15 @@
-Model,Outcome,Sample,AUC,N_obs,N_closures
-A: OLS (Continuous),closed_in_year_lead1,2002–2021 (full),N/A,2556,0
-B: LASSO-OLS (Continuous),closed_in_year_lead1,2002–2021 (full),N/A,2556,0
-C: OLS (Binned),closed_in_year_lead1,2002–2021 (full),0.737,19495,179
-D: XGBoost (Binned),closed_in_year_lead1,2002–2021 (full),0.749,19495,179
-E: XGBoost (Continuous),closed_in_year_lead1,2002–2021 (full),0.739,19495,179
-F: XGBoost (All Controls),closed_in_year_lead1,2002–2021 (full),0.743,19495,179
-A: OLS (Continuous),closed_within_3yr_lead,2002–2021 (full),0.019,2469,3
-B: LASSO-OLS (Continuous),closed_within_3yr_lead,2002–2021 (full),0.019,2469,3
-C: OLS (Binned),closed_within_3yr_lead,2002–2021 (full),0.752,19570,622
-D: XGBoost (Binned),closed_within_3yr_lead,2002–2021 (full),0.762,19570,622
-E: XGBoost (Continuous),closed_within_3yr_lead,2002–2021 (full),0.761,19570,622
-F: XGBoost (All Controls),closed_within_3yr_lead,2002–2021 (full),0.772,19570,622
+Sample,Model,Controls,Pred_Closures_pt,AUC_pt,N_pt,Pred_Closures_3yr,AUC_3yr,N_3yr
+2002–2023,Linear Probability,Select Continuous,0,N/A,2556,2432,1.9%,2469
+2002–2023,Linear Probability – LASSO,Select Continuous,0,N/A,2556,2432,1.9%,2469
+2002–2023,Linear Probability,Select Binned,5646,73.7%,19495,8112,75.2%,19570
+2002–2023,Gradient Boosting,Select Binned,9723,74.9%,19495,6139,76.2%,19570
+2002–2023,Gradient Boosting,Select Continuous,12415,73.9%,19495,6435,76.1%,19570
+2002–2023,Gradient Boosting,All,10476,74.3%,19495,6496,77.2%,19570
+2006–2020,Linear Probability,Federal Metrics,439,72.8%,3374,1017,70.6%,3374
+2006–2020,Gradient Boosting,Federal Metrics,1058,71.6%,3374,1231,69.2%,3374
+2006–2020,Linear Probability,Select Continuous,2447,2.5%,2509,0,N/A,2528
+2006–2020,Linear Probability – LASSO,Select Continuous,2447,2.5%,2509,0,N/A,2528
+2006–2020,Linear Probability,Select Binned,6584,75.3%,15581,6180,77.8%,15518
+2006–2020,Gradient Boosting,Select Binned,6872,75.1%,15581,7302,78.3%,15518
+2006–2020,Gradient Boosting,Select Continuous,5751,75.7%,15581,6403,77.7%,15518
+2006–2020,Gradient Boosting,All,6207,73.7%,15581,4733,78.5%,15518
