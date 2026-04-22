@@ -18,6 +18,9 @@ download-peps: ## Download PEPS closed schools data (1996-2023)
 download-scorecard: ## Download College Scorecard data (requires SCORECARD_API_KEY in .env)
 	uv run python scripts/download_scorecard.py
 
+merge-scorecard: ## Extract enrollment and financial proxies from Scorecard historical bulk zip
+	uv run python scripts/merge_scorecard.py
+
 download-frc: ## Download FRC composite scores (2006-2020)
 	uv run python scripts/download_frc.py
 
@@ -32,7 +35,7 @@ download-bls: ## Download BLS LAUS county unemployment rates (1990-2022)
 
 download-all: download-ipeds download-peps download-scorecard download-frc download-bea download-saipe download-bls ## Download all data sources
 
-build-panel: ## Build institution-year panel (requires downloaded IPEDS + PEPS)
+build-panel: ## Build institution-year panel (requires downloaded IPEDS + PEPS + Scorecard)
 	uv run python scripts/build_panel.py
 
 replicate-table4: ## Replicate Table 4: closure trends by sector

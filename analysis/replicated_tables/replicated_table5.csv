@@ -1,15 +1,15 @@
 Sample,Model,Controls,Pred_Closures_pt,AUC_pt,N_pt,Pred_Closures_3yr,AUC_3yr,N_3yr
-2002–2023,Linear Probability,Select Continuous,0,N/A,2556,2432,1.9%,2469
-2002–2023,Linear Probability – LASSO,Select Continuous,0,N/A,2556,2432,1.9%,2469
-2002–2023,Linear Probability,Select Binned,5646,73.7%,19495,8112,75.2%,19570
-2002–2023,Gradient Boosting,Select Binned,9723,74.9%,19495,6139,76.2%,19570
-2002–2023,Gradient Boosting,Select Continuous,12415,73.9%,19495,6435,76.1%,19570
-2002–2023,Gradient Boosting,All,10476,74.3%,19495,6496,77.2%,19570
+2002–2023,Linear Probability,Select Continuous,29,98.9%,2627,2479,2.5%,2531
+2002–2023,Linear Probability – LASSO,Select Continuous,29,98.9%,2627,2479,2.5%,2531
+2002–2023,Linear Probability,Select Binned,8695,73.7%,19495,6581,75.7%,19570
+2002–2023,Gradient Boosting,Select Binned,10046,75.5%,19495,6481,76.9%,19570
+2002–2023,Gradient Boosting,Select Continuous,9739,75.8%,19495,7342,76.9%,19570
+2002–2023,Gradient Boosting,All,10550,76.3%,19495,6069,78.8%,19570
 2006–2020,Linear Probability,Federal Metrics,439,72.8%,3374,1017,70.6%,3374
 2006–2020,Gradient Boosting,Federal Metrics,1058,71.6%,3374,1231,69.2%,3374
-2006–2020,Linear Probability,Select Continuous,2447,2.5%,2509,0,N/A,2528
-2006–2020,Linear Probability – LASSO,Select Continuous,2447,2.5%,2509,0,N/A,2528
-2006–2020,Linear Probability,Select Binned,6584,75.3%,15581,6180,77.8%,15518
-2006–2020,Gradient Boosting,Select Binned,6872,75.1%,15581,7302,78.3%,15518
-2006–2020,Gradient Boosting,Select Continuous,5751,75.7%,15581,6403,77.7%,15518
-2006–2020,Gradient Boosting,All,6207,73.7%,15581,4733,78.5%,15518
+2006–2020,Linear Probability,Select Continuous,2447,4.0%,2548,0,N/A,2586
+2006–2020,Linear Probability – LASSO,Select Continuous,2447,4.0%,2548,0,N/A,2586
+2006–2020,Linear Probability,Select Binned,6305,76.9%,15581,5505,78.8%,15518
+2006–2020,Gradient Boosting,Select Binned,7040,77.0%,15581,6442,78.5%,15518
+2006–2020,Gradient Boosting,Select Continuous,7518,76.6%,15581,4242,78.1%,15518
+2006–2020,Gradient Boosting,All,5401,78.9%,15581,5030,80.2%,15518

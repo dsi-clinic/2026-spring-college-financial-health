@@ -26,9 +26,12 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from utils import normalize_opeid
+
 # --- Paths ---
 IPEDS_DIR = Path("data/raw/ipeds")
 PEPS_FILE = Path("data/raw/peps/closedschoolsearch.xls")
+SCORECARD_PATH = Path("data/raw/scorecard/scorecard_panel.parquet")
 OUTPUT_DIR = Path("analysis/panel")
 
 # --- Year range ---
@@ -109,16 +112,6 @@ F3_MAP = {
     "net_assets_begin":  "f3g01",   # net assets at beginning of year
     "net_assets_end":    "f3g05",   # net assets at end of year
 }
-
-
-def normalize_opeid(series: pd.Series) -> pd.Series:
-    """Zero-pad OPEID to 8 chars, handling float representation."""
-    return (
-        series.astype(str)
-        .str.strip()
-        .str.replace(r"\.0$", "", regex=True)
-        .str.zfill(8)
-    )
 
 
 def load_hd(year: int) -> pd.DataFrame:
@@ -299,6 +292,18 @@ def cpi_deflator(year: int) -> float:
     return CPI_U[CPI_BASE_YEAR] / CPI_U.get(year, CPI_U[CPI_BASE_YEAR])
 
 
+def load_scorecard() -> pd.DataFrame:
+    """
+    Load the pre-built Scorecard panel (from merge_scorecard.py).
+    Returns empty DataFrame if the file doesn't exist.
+    Columns: unitid, year, sc_enroll, sc_tuitfte, sc_inexpfte, sc_pctpell
+    """
+    if not SCORECARD_PATH.exists():
+        print("  (Scorecard panel not found — run scripts/merge_scorecard.py first)")
+        return pd.DataFrame(columns=["unitid", "year"])
+    return pd.read_parquet(SCORECARD_PATH)
+
+
 def build_panel() -> pd.DataFrame:
     """Assemble the full institution-year panel."""
     print("Loading PEPS closures...")
@@ -306,6 +311,13 @@ def build_panel() -> pd.DataFrame:
     peps_set = set(peps["opeid"])
     closed_year_map = dict(zip(peps["opeid"], peps["closed_year"]))
     print(f"  {len(peps_set):,} closed institutions in PEPS")
+
+    print("Loading College Scorecard panel...")
+    sc_panel = load_scorecard()
+    sc_cols = ["unitid", "sc_enroll", "sc_tuitfte", "sc_inexpfte", "sc_pctpell"]
+    has_scorecard = not sc_panel.empty
+    if has_scorecard:
+        print(f"  {len(sc_panel):,} Scorecard institution-year rows")
 
     rows = []
     for year in PANEL_YEARS:
@@ -318,10 +330,22 @@ def build_panel() -> pd.DataFrame:
             print("(HD missing, skip)")
             continue
 
-        # Merge
+        # Merge IPEDS sources
         df = hd.merge(fin, on="unitid", how="left")
         df = df.merge(enr, on="unitid", how="left")
         df["year"] = year
+
+        # Merge Scorecard: supplement enrollment and add financial proxies
+        if has_scorecard:
+            sc_yr = sc_panel[sc_panel["year"] == year][
+                [c for c in sc_cols if c in sc_panel.columns]
+            ]
+            df = df.merge(sc_yr, on="unitid", how="left")
+            # Fill IPEDS enrollment gaps with Scorecard undergrad headcount
+            df["enroll"] = df["enroll"].fillna(df["sc_enroll"])
+        else:
+            for col in sc_cols[1:]:  # skip unitid
+                df[col] = np.nan
 
         # Closure status: has this institution ever appeared in PEPS?
         df["closed_year_peps"] = df["opeid"].map(closed_year_map)
@@ -346,49 +370,58 @@ def build_panel() -> pd.DataFrame:
 def add_derived_variables(panel: pd.DataFrame) -> pd.DataFrame:
     """Compute financial ratios and derived variables. CPI-adjust dollar columns first."""
     print("\nApplying CPI adjustment to 2022 dollars...")
-    # Dollar-value columns to deflate
     dollar_cols = [
         "total_rev", "total_exp", "rev_tuition", "cash_sti", "lt_debt",
         "total_assets", "unrestricted_na", "exp_instruction", "exp_scholarships",
         "exp_interest", "exp_depreciation",
+        # Scorecard per-FTE dollar values (nominal → 2022 dollars)
+        "sc_tuitfte", "sc_inexpfte",
     ]
+    deflators = panel["year"].map(cpi_deflator)
     for col in dollar_cols:
         if col in panel.columns:
-            deflators = panel["year"].map(cpi_deflator)
             panel[f"{col}_real"] = panel[col] * deflators
 
     print("Computing financial ratios...")
-    rev = panel.get("total_rev_real", pd.Series(np.nan, index=panel.index))
-    exp = panel.get("total_exp_real", pd.Series(np.nan, index=panel.index))
-    assets = panel.get("total_assets_real", pd.Series(np.nan, index=panel.index))
-    cash_sti = panel.get("cash_sti_real", pd.Series(np.nan, index=panel.index))
-    lt_debt = panel.get("lt_debt_real", pd.Series(np.nan, index=panel.index))
-    unrestr = panel.get("unrestricted_na_real", pd.Series(np.nan, index=panel.index))
-    tuition = panel.get("rev_tuition_real", pd.Series(np.nan, index=panel.index))
-    exp_instr = panel.get("exp_instruction_real", pd.Series(np.nan, index=panel.index))
-    exp_schol = panel.get("exp_scholarships_real", pd.Series(np.nan, index=panel.index))
-    exp_int = panel.get("exp_interest_real", pd.Series(np.nan, index=panel.index))
-    exp_dep = panel.get("exp_depreciation_real", pd.Series(np.nan, index=panel.index))
+    nan = pd.Series(np.nan, index=panel.index)
+    def sc(col): return panel.get(col, nan)  # safe column fetch with NaN default
 
-    # Operating margin
-    panel["operating_margin"] = (rev - exp) / rev
+    rev       = sc("total_rev_real")
+    exp       = sc("total_exp_real")
+    assets    = sc("total_assets_real")
+    cash_sti  = sc("cash_sti_real")
+    lt_debt   = sc("lt_debt_real")
+    unrestr   = sc("unrestricted_na_real")
+    tuition   = sc("rev_tuition_real")
+    exp_instr = sc("exp_instruction_real")
+    exp_schol = sc("exp_scholarships_real")
+    exp_int   = sc("exp_interest_real")
+    exp_dep   = sc("exp_depreciation_real")
 
-    # Days cash on hand: cash / (total_exp / 365)
-    daily_exp = exp / 365
+    # Operating margin — guard zero revenue
+    safe_rev = rev.replace(0, np.nan)
+    panel["operating_margin"] = (rev - exp) / safe_rev
+
+    # Days cash on hand: cash / (total_exp / 365) — guard zero expenses
+    daily_exp = exp.replace(0, np.nan) / 365
     panel["dcoh"] = cash_sti / daily_exp
 
-    # Debt ratios
-    panel["debt_to_assets"] = lt_debt / assets
-    panel["unrestricted_na_ratio"] = unrestr / assets
+    # Debt ratios — guard zero denominators to avoid inf (common in sectors 6/9
+    # where total_assets is reported as 0 rather than missing)
+    safe_assets = assets.replace(0, np.nan)
+    panel["debt_to_assets"] = (lt_debt / safe_assets).clip(0, 20)
+    panel["unrestricted_na_ratio"] = unrestr / safe_assets
 
-    # Revenue shares
-    panel["rev_share_tuition"] = tuition / rev
+    # Revenue shares — guard zero revenue
+    safe_rev = rev.replace(0, np.nan)
+    panel["rev_share_tuition"] = tuition / safe_rev
 
-    # Expense shares
-    panel["exp_share_instruction"] = exp_instr / exp
-    panel["exp_share_scholarships"] = exp_schol / exp
-    panel["exp_share_interest"] = exp_int / exp
-    panel["exp_share_depreciation"] = exp_dep / exp
+    # Expense shares — guard zero expenses
+    safe_exp = exp.replace(0, np.nan)
+    panel["exp_share_instruction"] = exp_instr / safe_exp
+    panel["exp_share_scholarships"] = exp_schol / safe_exp
+    panel["exp_share_interest"] = exp_int / safe_exp
+    panel["exp_share_depreciation"] = exp_dep / safe_exp
 
     # EBIDA = operating income + interest + depreciation + amortization
     # Using: EBIDA = (rev - exp) + exp_interest + exp_depreciation
@@ -408,7 +441,6 @@ def add_enrollment_changes(panel: pd.DataFrame) -> pd.DataFrame:
     print("Computing enrollment changes...")
     panel = panel.sort_values(["unitid", "year"])
 
-    enr = panel.set_index(["unitid", "year"])["enroll"]
     panel["enroll_prev"] = (
         panel.set_index(["unitid", "year"])
         .groupby("unitid")["enroll"]
@@ -444,7 +476,7 @@ def add_rolling_indicators(panel: pd.DataFrame) -> pd.DataFrame:
     print("Computing rolling indicators...")
     panel = panel.sort_values(["unitid", "year"])
 
-    for uid_col, var_col, out_col in [
+    for _, var_col, out_col in [
         ("unitid", "total_rev_real", "rev_decline_10pct"),
         ("unitid", "enroll", "enroll_decline_10pct"),
     ]:
@@ -457,7 +489,6 @@ def add_rolling_indicators(panel: pd.DataFrame) -> pd.DataFrame:
 
     # Persistent negative margin: ≥3 of past 5 years negative
     if "operating_margin" in panel.columns:
-        neg_margin = (panel["operating_margin"] < 0).astype(float)
         rolling_sum = panel.groupby("unitid")["operating_margin"].transform(
             lambda x: (x < 0).astype(float).shift(1).rolling(5, min_periods=3).sum()
         )
@@ -465,7 +496,6 @@ def add_rolling_indicators(panel: pd.DataFrame) -> pd.DataFrame:
 
     # Consecutive enrollment decline: yoy < -5% for 3 consecutive years
     if "enroll_yoy" in panel.columns:
-        decline = (panel["enroll_yoy"] < -0.05).astype(float)
         rolling_sum3 = panel.groupby("unitid")["enroll_yoy"].transform(
             lambda x: (x < -0.05).astype(float).rolling(3, min_periods=3).sum()
         )
@@ -492,6 +522,8 @@ def main():
         "exp_share_interest", "debt_to_ebida",
         "enroll", "enroll_yoy",
         "total_rev_real", "total_exp_real",
+        # Scorecard proxies
+        "sc_tuitfte_real", "sc_inexpfte_real", "sc_pctpell",
     ]
     panel = add_lags(panel, lag_targets, lags=[2, 3])
     panel = add_rolling_indicators(panel)
@@ -505,7 +537,7 @@ def main():
     print(f"Rows with finance data: {panel['total_rev'].notna().sum():,} ({100*panel['total_rev'].notna().mean():.1f}%)")
     print(f"Rows with enrollment: {panel['enroll'].notna().sum():,} ({100*panel['enroll'].notna().mean():.1f}%)")
 
-    closed_rows = panel[panel["is_closed"] == True]
+    closed_rows = panel[panel["is_closed"]]
     print(f"Rows for closed institutions: {len(closed_rows):,}")
     print(f"Institutions closed in year (closed_in_year=1): {(panel['closed_in_year']==1).sum():,}")
     print(f"Institutions with closure within 3yr: {(panel['closed_within_3yr']==1).sum():,}")

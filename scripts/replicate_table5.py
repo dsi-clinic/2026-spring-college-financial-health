@@ -32,6 +32,8 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from utils import normalize_opeid
 from sklearn.linear_model import LassoCV, LinearRegression
 from sklearn.metrics import roc_auc_score, roc_curve
 from sklearn.model_selection import train_test_split
@@ -67,7 +69,11 @@ EXTENDED_VARS = [
     "rev_decline_10pct", "enroll_decline_10pct",
     "persistent_neg_margin", "consec_enroll_decline_3yr",
     "total_rev_real", "total_rev_real_l2", "total_rev_real_l3",
-    "enroll_l2", "enroll_l3",
+    # enroll_l2/l3 already in SELECT_CONTINUOUS — not repeated here
+    # Scorecard proxies — provide financial signal for sectors 6/9 that don't file IPEDS surveys
+    "sc_tuitfte_real", "sc_tuitfte_real_l2", "sc_tuitfte_real_l3",
+    "sc_inexpfte_real", "sc_inexpfte_real_l2",
+    "sc_pctpell", "sc_pctpell_l2",
 ]
 
 
@@ -140,11 +146,7 @@ def merge_frc(panel: pd.DataFrame, frc: pd.DataFrame) -> pd.DataFrame:
         return panel
     # Normalize opeid in panel: strip .0 suffix and zero-pad to 8 chars
     panel = panel.copy()
-    panel["_opeid_str"] = (
-        panel["opeid"].astype(str)
-        .str.replace(r"\.0$", "", regex=True)
-        .str.zfill(8)
-    )
+    panel["_opeid_str"] = normalize_opeid(panel["opeid"])
     frc_lookup = frc.rename(columns={"year": "year_num"})
     merged = panel.merge(
         frc_lookup[["opeid", "year_num", "frc_score"]],
@@ -428,8 +430,10 @@ def run_models(
     ))
 
     # ---- Model F: XGBoost, All Controls ----
-    all_feats = [f for f in SELECT_CONTINUOUS + EXTENDED_VARS + sec_dummies + yr_dummies
-                 if f in panel.columns]
+    all_feats = list(dict.fromkeys(  # preserve order, deduplicate
+        f for f in SELECT_CONTINUOUS + EXTENDED_VARS + sec_dummies + yr_dummies
+        if f in panel.columns
+    ))
     X_tr_f = train[all_feats].values
     X_te_f = test[all_feats].values
     preds_f, booster_f = run_xgboost(X_tr_f, y_tr, X_te_f, scale_pos_weight=spw)
@@ -699,12 +703,12 @@ def main():
     print(f"{'Sample':<12} {'Model':<28} {'Controls':<20}  {'Pred':>6} {'AUC':>7} {'N':>8}  {'Pred':>6} {'AUC':>7} {'N':>8}")
     print(sep)
     prev_sample = None
-    for row in paper_rows:
+    for i, row in enumerate(paper_rows):
         s, _, m, c, pa, au_a, n_a, pb, au_b, n_b = row
         if s != prev_sample and prev_sample is not None:
             print()
         prev_sample = s
-        s_str = s if (row == paper_rows[0] or paper_rows[paper_rows.index(row)-1][0] != s) else ""
+        s_str = s if (i == 0 or paper_rows[i - 1][0] != s) else ""
         print(f"{s_str:<12} {m:<28} {c:<20}  {pa:>6} {au_a:>7} {n_a:>8}  {pb:>6} {au_b:>7} {n_b:>8}")
     print(sep)
 

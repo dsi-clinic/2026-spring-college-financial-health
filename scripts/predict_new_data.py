@@ -90,16 +90,18 @@ def _make_sector_dummies(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _get_feature_matrix(df: pd.DataFrame, fitted_feature_names: list[str]) -> xgb.DMatrix:
-    """Build DMatrix from input df, aligning to fitted feature names."""
-    # Add sector dummies
-    df = _make_sector_dummies(df.copy())
+    """Build DMatrix from input df, aligning to fitted feature names.
 
-    # Add any missing columns as NaN
+    NOTE: Year dummy columns (yr_*) are not added here — they will be NaN for
+    out-of-sample institutions, which XGBoost handles natively via its missing-value
+    path. This is acceptable and consistent with how the model was exported.
+    """
+    df = _make_sector_dummies(df)
+
     for col in fitted_feature_names:
         if col not in df.columns:
             df[col] = np.nan
 
-    # Replace inf with NaN
     X = df[fitted_feature_names].astype(float)
     X = X.replace([np.inf, -np.inf], np.nan)
     return xgb.DMatrix(X)

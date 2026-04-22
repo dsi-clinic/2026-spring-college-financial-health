@@ -16,6 +16,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from utils import normalize_opeid
+
 PEPS_FILE = Path("data/raw/peps/closedschoolsearch.xls")
 PANEL_PATH = Path("analysis/panel/institution_year_panel.parquet")
 OUTPUT_PATH = Path("analysis/closed_colleges.csv")
@@ -28,15 +30,6 @@ SECTOR_LABELS = {
     7: "For-profit 4-year", 8: "For-profit 2-year", 9: "For-profit <2yr",
     99: "Unknown/Not Title IV",
 }
-
-
-def normalize_opeid(series: pd.Series) -> pd.Series:
-    return (
-        series.astype(str)
-        .str.strip()
-        .str.replace(r"\.0$", "", regex=True)
-        .str.zfill(8)
-    )
 
 
 def load_peps() -> pd.DataFrame:
@@ -54,19 +47,15 @@ def load_peps() -> pd.DataFrame:
 
 def load_panel_summary() -> pd.DataFrame:
     """Load the panel and compute per-institution summary statistics."""
-    panel = pd.read_parquet(PANEL_PATH)
-    panel["opeid"] = (
-        panel["opeid"].astype(str).str.strip()
-        .str.replace(r"\.0$", "", regex=True)
-        .str.zfill(8)
-    )
+    _COLS = ["unitid", "opeid", "instnm", "stabbr", "sector", "year", "enroll"]
+    panel = pd.read_parquet(PANEL_PATH, columns=_COLS)
+    panel["opeid"] = normalize_opeid(panel["opeid"])
+    panel = panel.sort_values("year")
 
-    # Last reported values per institution
     latest = (
-        panel.sort_values("year")
-        .groupby("unitid")
+        panel.groupby("unitid")
         .last()
-        .reset_index()[["unitid", "opeid", "instnm", "stabbr", "sector", "year", "enroll"]]
+        .reset_index()[_COLS]
     )
     latest = latest.rename(columns={
         "stabbr": "state_abbr",
@@ -75,10 +64,8 @@ def load_panel_summary() -> pd.DataFrame:
         "instnm": "inst_name",
     })
 
-    # First reported year
     first = (
-        panel.sort_values("year")
-        .groupby("unitid")["year"]
+        panel.groupby("unitid")["year"]
         .first()
         .reset_index()
         .rename(columns={"year": "first_ipeds_year"})
